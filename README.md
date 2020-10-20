@@ -1,2 +1,1 @@
-# nifi-prometheus-bundle
-Apache NiFi Prometheus Remote Write Processor
+# Apache NiFi Prometheus Remote Write Processor
