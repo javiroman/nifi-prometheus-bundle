@@ -28,7 +28,8 @@
     <properties>
         <jetty.version>9.3.9.v20160517</jetty.version>
         <protobuf.version>3.13.0</protobuf.version>
-        <snappy.version>1.1.7.7</snappy.version>
+        <snappy.version>1.1.7.1</snappy.version>
+        <maven.protobuf.version>0.6.1</maven.protobuf.version>
     </properties>
 
     <dependencies>
@@ -89,7 +90,7 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
+                <version>${maven.protobuf.version}</version>
                 <configuration>
                     <!-- FIXME: os detection -->
                     <protocExecutable>/usr/bin/protoc</protocExecutable>

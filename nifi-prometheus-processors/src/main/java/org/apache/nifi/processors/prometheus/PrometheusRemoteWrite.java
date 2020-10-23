@@ -17,16 +17,13 @@
 package org.apache.nifi.processors.prometheus;
 
 import org.apache.nifi.annotation.behavior.TriggerSerially;
+import org.apache.nifi.annotation.lifecycle.OnShutdown;
+import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.annotation.behavior.InputRequirement;
-import org.apache.nifi.annotation.behavior.ReadsAttribute;
-import org.apache.nifi.annotation.behavior.ReadsAttributes;
-import org.apache.nifi.annotation.behavior.WritesAttribute;
-import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
-import org.apache.nifi.annotation.documentation.SeeAlso;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.AbstractProcessor;
@@ -34,6 +31,7 @@ import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.io.OutputStreamCallback;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
@@ -43,7 +41,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.gson.Gson;
-import com.google.protobuf.TextFormat;
 import com.google.protobuf.util.JsonFormat;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -52,6 +49,7 @@ import prometheus.Remote.WriteRequest;
 import prometheus.Types;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -91,6 +89,8 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
 
     private Set<Relationship> relationships;
 
+    private Server serverEndpoint;
+
     @Override
     protected void init(final ProcessorInitializationContext context) {
         final List<PropertyDescriptor> descriptors = new ArrayList<PropertyDescriptor>();
@@ -123,15 +123,11 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         final int port = context.getProperty(REMOTE_WRITE_PORT).asInteger();
         final String contextPath = context.getProperty(REMOTE_WRITE_CONTEXT).getValue();
 
-        FlowFile flowFile = session.get();
-        if ( flowFile == null ) {
-            return;
-        }
-        Server serverEndpoint = new Server(port);
+        serverEndpoint = new Server(port);
 
         ContextHandler contextHandler = new ContextHandler();
         contextHandler.setContextPath(contextPath);
-        contextHandler.setHandler(new PrometheusHandler(flowFile));
+        contextHandler.setHandler(new PrometheusHandler(session));
         serverEndpoint.setHandler(contextHandler);
 
         try {
@@ -142,14 +138,23 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         }
     }
 
+    @OnShutdown
+    public void onShutdown() throws Exception {
+        serverEndpoint.stop();
+    }
+
+    @OnStopped
+    public void onStopped() throws Exception {
+        serverEndpoint.stop();
+    }
+
     private class PrometheusHandler extends AbstractHandler {
-
         private final JsonFormat.Printer JSON_PRINTER = JsonFormat.printer();
+        private ProcessSession session;
 
-        public PrometheusHandler(FlowFile session) {
+        public PrometheusHandler(ProcessSession session) {
             super();
-            // FIXME
-            FlowFile ses = session;
+            this.session = session;
         }
 
         @Override
@@ -175,6 +180,10 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                     List<MetricSample> sampleList = new ArrayList<>();
                     Metrics metrics = new Metrics();
                     Gson gson = new Gson();
+
+                    FlowFile flowFile = session.create();
+                    getLogger().debug("Creating flow file for event: {}.", new Object[]{timeSeries});
+
                     for (Types.Label labelItem: timeSeries.getLabelsList()) {
                         MetricLabel metricsLabel = new MetricLabel();
                         metricsLabel.name = labelItem.getName();
@@ -189,10 +198,22 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                     }
                     metrics.metricLabels= labelsList;
                     metrics.metricSamples = sampleList;
-                    System.out.println(gson.toJson(metrics));
-                }
+                    //System.out.println(gson.toJson(metrics));
+                    flowFile = session.write(flowFile, new OutputStreamCallback() {
+                                @Override
+                                public void process(OutputStream out) throws IOException {
+                                    out.write(gson.toJson(metrics).getBytes());
+                                    out.flush();
+                                }
+                            });
 
+                    getLogger().debug("sucess relation for flow file: {}.", new Object[]{flowFile});
+                    session.transfer(flowFile, REL_SUCCESS);
+                    session.getProvenanceReporter().receive(flowFile, "javi");
+                    session.commit();
+                }
                 out.flush();
+                baseRequest.setHandled(true);
             } catch (IOException e) {
                 throw e;
             }
