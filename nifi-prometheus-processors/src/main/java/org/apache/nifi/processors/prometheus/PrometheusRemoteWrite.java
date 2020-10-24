@@ -17,6 +17,8 @@
 package org.apache.nifi.processors.prometheus;
 
 import org.apache.nifi.annotation.behavior.TriggerSerially;
+import org.apache.nifi.annotation.behavior.WritesAttribute;
+import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.lifecycle.OnShutdown;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.annotation.lifecycle.OnUnscheduled;
@@ -61,6 +63,7 @@ import java.util.Set;
 @CapabilityDescription("Listen for incoming samples from Prometheus." +
         " Implements a remote endpoint adapter for writing Prometheus" +
         " samples, primarily intended for metrics long term storage")
+@WritesAttributes({@WritesAttribute(attribute = "mime.type", description = "This is always application/json.")})
 @InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
 @TriggerSerially
 public class PrometheusRemoteWrite extends AbstractProcessor {
@@ -223,6 +226,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                                 }
                             });
 
+                    session.putAttribute(flowFile, "mime.type","application/json");
                     getLogger().debug("sucess relation for flow file: {}.", new Object[]{flowFile});
                     session.transfer(flowFile, REL_SUCCESS);
                     session.getProvenanceReporter().receive(flowFile, request.getRequestURI());
