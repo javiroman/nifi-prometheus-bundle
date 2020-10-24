@@ -73,6 +73,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
             .displayName("Remote Write URL context")
             .description("The context used in the remote_write url property in Prometheus")
             .required(true)
+            .defaultValue("/write")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
@@ -81,6 +82,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
             .displayName("Remote Write URL port")
             .description("The port used in the remote_write url property in Prometheus")
             .required(true)
+            .defaultValue("9191")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
