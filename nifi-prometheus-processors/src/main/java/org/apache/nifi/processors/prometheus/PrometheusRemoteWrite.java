@@ -19,6 +19,7 @@ package org.apache.nifi.processors.prometheus;
 import org.apache.nifi.annotation.behavior.TriggerSerially;
 import org.apache.nifi.annotation.lifecycle.OnShutdown;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
+import org.apache.nifi.annotation.lifecycle.OnUnscheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.annotation.behavior.InputRequirement;
@@ -115,7 +116,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
 
     @OnScheduled
     public void onScheduled(final ProcessContext context) {
-
+        getLogger().debug("onScheduled called");
     }
 
     @Override
@@ -123,6 +124,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         final int port = context.getProperty(REMOTE_WRITE_PORT).asInteger();
         final String contextPath = context.getProperty(REMOTE_WRITE_CONTEXT).getValue();
 
+        getLogger().debug("onTrigger called");
         serverEndpoint = new Server(port);
 
         ContextHandler contextHandler = new ContextHandler();
@@ -138,15 +140,30 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         }
     }
 
-    @OnShutdown
-    public void onShutdown() throws Exception {
-        serverEndpoint.stop();
+    @OnUnscheduled
+    public void onUnscheduled() throws Exception {
+        getLogger().debug("onUnscheduled called");
+        if (serverEndpoint != null) {
+            serverEndpoint.stop();
+        }
     }
 
     @OnStopped
     public void onStopped() throws Exception {
-        serverEndpoint.stop();
+        getLogger().debug("onStopped called");
+        if (serverEndpoint != null) {
+            serverEndpoint.stop();
+        }
     }
+
+    @OnShutdown
+    public void onShutdown() throws Exception {
+        getLogger().debug("onShutdown called");
+        if (serverEndpoint != null) {
+            serverEndpoint.stop();
+        }
+    }
+
 
     private class PrometheusHandler extends AbstractHandler {
         private final JsonFormat.Printer JSON_PRINTER = JsonFormat.printer();
@@ -198,7 +215,6 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                     }
                     metrics.metricLabels= labelsList;
                     metrics.metricSamples = sampleList;
-                    //System.out.println(gson.toJson(metrics));
                     flowFile = session.write(flowFile, new OutputStreamCallback() {
                                 @Override
                                 public void process(OutputStream out) throws IOException {
@@ -209,7 +225,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
 
                     getLogger().debug("sucess relation for flow file: {}.", new Object[]{flowFile});
                     session.transfer(flowFile, REL_SUCCESS);
-                    session.getProvenanceReporter().receive(flowFile, "javi");
+                    session.getProvenanceReporter().receive(flowFile, request.getRequestURI());
                     session.commit();
                 }
                 out.flush();
