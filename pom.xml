@@ -50,6 +50,7 @@
                     <encoding>UTF-8</encoding>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
+                    <excludes>**/prometheus/Remote.java,**/prometheus/Types.java</excludes>
                 </configuration>
                 <executions>
                     <execution>

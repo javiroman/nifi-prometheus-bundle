@@ -20,12 +20,10 @@ import org.apache.nifi.annotation.behavior.TriggerSerially;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.lifecycle.OnShutdown;
-import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.annotation.lifecycle.OnUnscheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.annotation.behavior.InputRequirement;
-import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.processor.exception.ProcessException;
@@ -185,10 +183,10 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
             try (SnappyInputStream is = new SnappyInputStream(baseRequest.getInputStream())) {
 
                 if (is == null) {
-                     getLogger().error("Inputstream is null");
+                     getLogger().error("InputStream is null");
                 }
 
-                ServletOutputStream reponseOut = response.getOutputStream();
+                ServletOutputStream responseOut = response.getOutputStream();
                 response.setStatus(HttpServletResponse.SC_OK);
 
                 WriteRequest writeRequest = WriteRequest.parseFrom(is);
