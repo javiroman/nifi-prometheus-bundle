@@ -79,8 +79,15 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
             .Builder().name("Remote Write Port")
             .displayName("Remote Write URL port")
             .description("The port used in the remote_write url property in Prometheus")
+            .required(false)
+            .addValidator(StandardValidators.INTEGER_VALIDATOR)
+            .build();
+
+    public static final PropertyDescriptor MAX_BATCH_METRICS = new PropertyDescriptor
+            .Builder().name("Max Batch Metrics")
+            .displayName("Max Batch Metrics")
+            .description("Number of max metrics in one FlowFile. When is not set, a FlowFile per metric is emitted")
             .required(true)
-            .defaultValue("9191")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
@@ -105,6 +112,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         final List<PropertyDescriptor> descriptors = new ArrayList<PropertyDescriptor>();
         descriptors.add(REMOTE_WRITE_CONTEXT);
         descriptors.add(REMOTE_WRITE_PORT);
+        descriptors.add(MAX_BATCH_METRICS);
         this.descriptors = Collections.unmodifiableList(descriptors);
 
         final Set<Relationship> relationships = new HashSet<Relationship>();
@@ -143,13 +151,14 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
     public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
         final int port = context.getProperty(REMOTE_WRITE_PORT).asInteger();
         final String contextPath = context.getProperty(REMOTE_WRITE_CONTEXT).getValue();
+        final int maxBatch = context.getProperty(MAX_BATCH_METRICS).asInteger();
 
         getLogger().debug("onTrigger called");
         serverEndpoint = new Server(port);
 
         ContextHandler contextHandler = new ContextHandler();
         contextHandler.setContextPath(contextPath);
-        contextHandler.setHandler(new PrometheusHandler(context, session));
+        contextHandler.setHandler(new PrometheusHandler(context, session, maxBatch));
         serverEndpoint.setHandler(contextHandler);
 
         try {
@@ -166,11 +175,22 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         private ProcessSession session;
         private ProcessContext context;
         private FlowFile flowfile;
+        private int maxBatch;
+        private List<Metrics> metricList = new ArrayList<>();
 
-        public PrometheusHandler(ProcessContext context, ProcessSession session) {
+        public PrometheusHandler(ProcessContext context, ProcessSession session, int maxBatch) {
             super();
             this.session = session;
             this.context = context;
+            this.maxBatch = maxBatch;
+        }
+
+        public void commitFlowFile(FlowFile flowFile, ProcessSession session, HttpServletRequest request){
+            session.putAttribute(flowfile, "mime.type","application/json");
+            getLogger().debug("SUCCESS relation for flow file: {}.", new Object[]{flowfile.getId()});
+            session.transfer(flowfile, REL_SUCCESS);
+            session.getProvenanceReporter().receive(flowfile, request.getRequestURI());
+            session.commit();
         }
 
         @Override
@@ -197,8 +217,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                     Metrics metrics = new Metrics();
                     Gson gson = new Gson();
 
-                    flowfile = session.create();
-                    getLogger().debug("Creating flow file for event: {}.", new Object[]{timeSeries});
+                    //getLogger().debug("Creating flow file for event: {}.", new Object[]{timeSeries});
 
                     for (Types.Label labelItem: timeSeries.getLabelsList()) {
                         MetricLabel metricsLabel = new MetricLabel();
@@ -214,23 +233,40 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                     }
                     metrics.metricLabels= labelsList;
                     metrics.metricSamples = sampleList;
-                    getLogger().debug("write content of FlowFile: {}.", new Object[]{flowfile.getId()});
-                    flowfile = session.write(flowfile, new OutputStreamCallback() {
-                                @Override
-                                public void process(OutputStream out) throws IOException {
-                                    out.write(gson.toJson(metrics).getBytes());
-                                    out.flush();
-                                    out.close();
-                                }
-                            });
 
-                    session.putAttribute(flowfile, "mime.type","application/json");
-                    getLogger().debug("SUCCESS relation for flow file: {}.", new Object[]{flowfile.getId()});
-                    session.transfer(flowfile, REL_SUCCESS);
-                    session.getProvenanceReporter().receive(flowfile, request.getRequestURI());
-                    session.commit();
+                    if (maxBatch == 0 || maxBatch == 1) {
+                        getLogger().debug("write content of FlowFile: {}.", new Object[]{flowfile.getId()});
+                        flowfile = session.create();
+                        flowfile = session.write(flowfile, new OutputStreamCallback() {
+                            @Override
+                            public void process(OutputStream out) throws IOException {
+                                out.write(gson.toJson(metrics).getBytes());
+                                out.flush();
+                                out.close();
+                            }
+                        });
+                        commitFlowFile(flowfile, session, request);
+                    } else if (metricList.size() < maxBatch) {
+                        metricList.add(metrics);
+                    } else {
+                        flowfile = session.create();
+                        flowfile = session.write(flowfile, new OutputStreamCallback() {
+                            @Override
+                            public void process(OutputStream out) throws IOException {
+                                out.write(gson.toJson(metricList).getBytes());
+                                out.flush();
+                                out.close();
+                            }
+                        });
+                        getLogger().debug("Batch mode enabled, writing {} metrics in FlowFile.",
+                                new Object[]{metricList.size()});
+                        commitFlowFile(flowfile, session, request);
+                        metricList.clear();
+                    }
                 }
+
                 baseRequest.setHandled(true);
+
             } catch (IOException e) {
                 getLogger().error("Ran into an error while processing {}.", new Object[] {flowfile.getId()}, e);
                 session.transfer(flowfile, REL_FAILURE);
@@ -238,6 +274,10 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                 throw e;
             }
         }
+    }
+
+    class BatchMetrics {
+        public List<Metrics> metrics;
     }
 
     class Metrics {
@@ -254,5 +294,4 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         public String sample;
         public String timestamp;
     }
-
 }
