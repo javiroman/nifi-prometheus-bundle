@@ -83,6 +83,11 @@
             <artifactId>jetty-servlet</artifactId>
             <version>${jetty.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.aggregate</groupId>
+            <artifactId>jetty-all</artifactId>
+            <version>7.6.0.v20120127</version>
+        </dependency>
     </dependencies>
 
     <build>

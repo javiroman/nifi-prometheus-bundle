@@ -35,6 +35,7 @@ import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.io.OutputStreamCallback;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -45,6 +46,7 @@ import com.google.gson.Gson;
 import com.google.protobuf.util.JsonFormat;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.xerial.snappy.SnappyInputStream;
 import prometheus.Remote.WriteRequest;
 import prometheus.Types;
@@ -160,7 +162,15 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         }
 
         getLogger().debug("onTrigger called");
-        serverEndpoint = new Server(port);
+
+        QueuedThreadPool threadPool = new QueuedThreadPool();
+        threadPool.setMaxThreads(500);
+        serverEndpoint = new Server(threadPool);
+
+        ServerConnector connector = new ServerConnector(serverEndpoint);
+        connector.setPort(port);
+        connector.setAcceptQueueSize(100);
+        serverEndpoint.addConnector(connector);
 
         ContextHandler contextHandler = new ContextHandler();
         contextHandler.setContextPath(contextPath);
