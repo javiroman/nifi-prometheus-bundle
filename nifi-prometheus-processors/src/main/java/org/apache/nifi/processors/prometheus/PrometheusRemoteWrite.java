@@ -109,6 +109,9 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
 
     private Server serverEndpoint;
 
+    // Maximum threads spawn, defaults to 200 max, min 8 threads
+    private static final int JETTY_MAX_THREADS = 500;
+
     @Override
     protected void init(final ProcessorInitializationContext context) {
         final List<PropertyDescriptor> descriptors = new ArrayList<PropertyDescriptor>();
@@ -163,15 +166,16 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
 
         getLogger().debug("onTrigger called");
 
+        // Internal Jetty thread pool tuning
         QueuedThreadPool threadPool = new QueuedThreadPool();
-        threadPool.setMaxThreads(500);
+        threadPool.setMaxThreads(JETTY_MAX_THREADS);
         serverEndpoint = new Server(threadPool);
 
         ServerConnector connector = new ServerConnector(serverEndpoint);
         connector.setPort(port);
-        connector.setAcceptQueueSize(100);
         serverEndpoint.addConnector(connector);
 
+        // Setup only one handler serving one context path
         ContextHandler contextHandler = new ContextHandler();
         contextHandler.setContextPath(contextPath);
         contextHandler.setHandler(new PrometheusHandler(context, session, maxBatch));
