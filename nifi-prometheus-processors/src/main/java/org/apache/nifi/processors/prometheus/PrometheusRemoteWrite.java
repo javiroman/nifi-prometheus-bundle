@@ -178,6 +178,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
         // Setup only one handler serving one context path
         ContextHandler contextHandler = new ContextHandler();
         contextHandler.setContextPath(contextPath);
+        contextHandler.setAllowNullPathInfo(true);
         contextHandler.setHandler(new PrometheusHandler(context, session, maxBatch));
         serverEndpoint.setHandler(contextHandler);
 
