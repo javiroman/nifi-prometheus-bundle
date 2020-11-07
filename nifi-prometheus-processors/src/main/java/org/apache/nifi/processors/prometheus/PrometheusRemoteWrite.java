@@ -107,7 +107,7 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
 
     private Set<Relationship> relationships;
 
-    private Server serverEndpoint;
+    public static Server serverEndpoint;
 
     // Maximum threads spawn, defaults to 200 max, min 8 threads
     private static final int JETTY_MAX_THREADS = 500;
