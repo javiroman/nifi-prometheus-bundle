@@ -95,6 +95,7 @@ public class PrometheusRemoteWriteTest {
                 timestamp
          */
 
+        // avoid race condition the test is quicker than Jetty startup.
         while (PrometheusRemoteWrite.serverEndpoint == null || !PrometheusRemoteWrite.serverEndpoint.isStarted()) {
             try {
                 Thread.sleep(500);
@@ -107,29 +108,27 @@ public class PrometheusRemoteWriteTest {
 
         List<Types.Label> labelsList = new ArrayList<>();
         List<Types.Sample> sampleList = new ArrayList<>();
-
         Types.TimeSeries.Builder timeSeriesBuilder = Types.TimeSeries.newBuilder();
         Types.Label.Builder labelBuilder = Types.Label.newBuilder();
         Types.Sample.Builder sampleBuilder = Types.Sample.newBuilder();
 
-
         labelBuilder.setName("name1")
                 .setValue("value1");
 
-        Types.Label l = labelBuilder.build();
-        labelsList.add(l);
+        Types.Label lbl = labelBuilder.build();
+        labelsList.add(lbl);
 
         labelBuilder.setName("name2")
                 .setValue("value2");
 
-        l = labelBuilder.build();
-        labelsList.add(l);
+        lbl = labelBuilder.build();
+        labelsList.add(lbl);
 
         sampleBuilder.setValue(1)
                 .setTimestamp(1111111111L);
 
-        Types.Sample s = sampleBuilder.build();
-        sampleList.add(s);
+        Types.Sample smpl = sampleBuilder.build();
+        sampleList.add(smpl);
 
         timeSeriesBuilder.addAllLabels(labelsList);
         timeSeriesBuilder.addAllSamples(sampleList);
