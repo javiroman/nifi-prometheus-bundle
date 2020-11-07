@@ -33,10 +33,6 @@ import prometheus.Types;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,7 +42,7 @@ import org.junit.Assert;
 public class PrometheusRemoteWriteTest {
 
     private static final String REMOTE_WRITE_CONTEXT = "/test";
-    private static final String REMOTE_WRITE_PORT = "2222";
+    private static final String REMOTE_WRITE_PORT = "0";
     private TestRunner testRunner;
     private Thread spawnTestRunner;
 
@@ -131,9 +127,8 @@ public class PrometheusRemoteWriteTest {
         HttpClient httpClient = new HttpClient();
         httpClient.start();
 
-        //PrometheusRemoteWrite.serverEndpoint
         ContentResponse response =
-                httpClient.newRequest("http://localhost:" + REMOTE_WRITE_PORT + REMOTE_WRITE_CONTEXT)
+                httpClient.newRequest(PrometheusRemoteWrite.serverEndpoint.getURI().toString())
                         .method(HttpMethod.POST)
                         .content(new InputStreamContentProvider(
                                 new ByteArrayInputStream(compressedMessage)))
