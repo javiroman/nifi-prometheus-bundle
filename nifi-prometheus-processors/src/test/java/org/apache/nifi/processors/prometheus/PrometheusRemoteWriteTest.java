@@ -86,6 +86,14 @@ public class PrometheusRemoteWriteTest {
                 timestamp
          */
 
+        while (PrometheusRemoteWrite.serverEndpoint == null || !PrometheusRemoteWrite.serverEndpoint.isStarted()) {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
         Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
 
         List<Types.Label> labelsList = new ArrayList<>();
