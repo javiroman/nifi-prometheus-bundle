@@ -43,6 +43,10 @@ public class PrometheusRemoteWriteTest {
 
     private static final String REMOTE_WRITE_CONTEXT = "/test";
     private static final String REMOTE_WRITE_PORT = "0";
+    private final String SINGLE_JSON_EXPECTED =
+            "{\"metricLabels\":[{\"name\": \"name1\", \"value\": \"value1\" }," +
+            "{\"name\": \"name2\", \"value\": \"value2\" } ]," +
+            "\"metricSamples\" : [ { \"sample\" : \"1.0\", \"timestamp\" : \"1111111111\" } ] }";
     private TestRunner testRunner;
     private Thread spawnTestRunner;
 
@@ -152,13 +156,7 @@ public class PrometheusRemoteWriteTest {
         final MockFlowFile flowFile = flowFileList.get(0);
         final String content = flowFile.getContent();
 
-        // Expected content
-        final String json =
-                "{\"metricLabels\":[{\"name\": \"name1\", \"value\": \"value1\" }," +
-                "{\"name\": \"name2\", \"value\": \"value2\" } ]," +
-                "\"metricSamples\" : [ { \"sample\" : \"1.0\", \"timestamp\" : \"1111111111\" } ] }";
-
-        JsonObject expectedJson = JsonParser.parseString(json).getAsJsonObject();
+        JsonObject expectedJson = JsonParser.parseString(SINGLE_JSON_EXPECTED).getAsJsonObject();
         JsonObject contentJson = JsonParser.parseString(content).getAsJsonObject();
 
         Assert.assertEquals(expectedJson, contentJson);
