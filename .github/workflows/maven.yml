@@ -54,8 +54,8 @@ jobs:
 
   windows-build:
 
-      runs-on: windows-latest
-      name: Windows - JDK 1.8
+    runs-on: windows-latest
+    name: Windows - JDK 1.8
 
     steps:
     - uses: actions/checkout@v2
