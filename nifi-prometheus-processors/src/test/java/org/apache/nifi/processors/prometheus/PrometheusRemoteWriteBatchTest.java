@@ -47,13 +47,11 @@ public class PrometheusRemoteWriteBatchTest {
 
     private final String BATCH_JSON_EXPECTED =
             "[{\"metricLabels\":[" +
-                    "{\"name\":\"name1\",\"value\":\"value1\"}," +
-                    "{\"name\":\"name2\",\"value\":\"value2\"}]," +
+                    "{\"name\":\"name1\",\"value\":\"value1\"}]," +
               "\"metricSamples\":[" +
                     "{\"sample\":\"1.0\",\"timestamp\":\"1111111111111\"}]}," +
               "{\"metricLabels\":[" +
-                    "{\"name\":\"name3\",\"value\":\"value3\"}," +
-                    "{\"name\":\"name4\",\"value\":\"value4\"}]," +
+                    "{\"name\":\"name2\",\"value\":\"value2\"}]," +
               "\"metricSamples\":[" +
                     "{\"sample\":\"2.0\",\"timestamp\":\"2222222222222\"}]}]";
 
@@ -95,22 +93,41 @@ public class PrometheusRemoteWriteBatchTest {
             }
         }
 
-        PrometheusMessage pm = new PrometheusMessage();
-        byte[] compressedMessage = pm.getBatchMessage();
+        PrometheusMessage pm1 = new PrometheusMessage();
+        byte[] compressedMessage1 = pm1.getBatchMessage("name1",
+                "value1",
+                1.0,
+                1111111111111L);
+
+        PrometheusMessage pm2 = new PrometheusMessage();
+        byte[] compressedMessage2 = pm2.getBatchMessage("name2",
+                "value2",
+                2.0,
+                2222222222222L);
 
         HttpClient httpClient = new HttpClient();
         httpClient.start();
 
-        ContentResponse response =
+        ContentResponse response1 =
                 httpClient.newRequest(PrometheusRemoteWrite.serverEndpoint.getURI().toString())
                         .method(HttpMethod.POST)
                         .content(new InputStreamContentProvider(
-                                new ByteArrayInputStream(compressedMessage)))
+                                new ByteArrayInputStream(compressedMessage1)))
+                        .send();
+
+        Assert.assertEquals(response1.getStatus(), HttpServletResponse.SC_OK);
+
+        ContentResponse response2 =
+                httpClient.newRequest(PrometheusRemoteWrite.serverEndpoint.getURI().toString())
+                        .method(HttpMethod.POST)
+                        .content(new InputStreamContentProvider(
+                                new ByteArrayInputStream(compressedMessage2)))
                         .send();
 
         httpClient.stop();
 
-        Assert.assertEquals(response.getStatus(), HttpServletResponse.SC_OK);
+        Assert.assertEquals(response2.getStatus(), HttpServletResponse.SC_OK);
+
         testRunner.assertAllFlowFilesTransferred(PrometheusRemoteWrite.REL_SUCCESS);
 
         final List<MockFlowFile> flowFileList =

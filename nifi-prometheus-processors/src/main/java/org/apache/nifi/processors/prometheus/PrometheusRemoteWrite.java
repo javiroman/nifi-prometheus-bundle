@@ -267,7 +267,9 @@ public class PrometheusRemoteWrite extends AbstractProcessor {
                         commitFlowFile(flowfile, session, request);
                     } else if (metricList.size() < maxBatch) {
                         metricList.add(metrics);
-                    } else {
+                    }
+
+                    if (metricList.size() == maxBatch) {
                         flowfile = session.create();
                         session.write(flowfile, new OutputStreamCallback() {
                             @Override

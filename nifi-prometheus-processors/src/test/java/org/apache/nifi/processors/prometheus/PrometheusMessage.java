@@ -50,7 +50,10 @@ public class PrometheusMessage {
         return compressedMessage;
     };
 
-    public byte[] getBatchMessage() throws IOException {
+    public byte[] getBatchMessage(String name,
+                                  String value,
+                                  Double sampleValue,
+                                  Long timestamp) throws IOException {
         Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
 
         List<Types.Label> labelsList = new ArrayList<>();
@@ -59,20 +62,14 @@ public class PrometheusMessage {
         Types.Label.Builder labelBuilder = Types.Label.newBuilder();
         Types.Sample.Builder sampleBuilder = Types.Sample.newBuilder();
 
-        labelBuilder.setName("name1")
-                .setValue("value1");
+        labelBuilder.setName(name)
+                .setValue(value);
 
         Types.Label lbl = labelBuilder.build();
         labelsList.add(lbl);
 
-        labelBuilder.setName("name2")
-                .setValue("value2");
-
-        lbl = labelBuilder.build();
-        labelsList.add(lbl);
-
-        sampleBuilder.setValue(1)
-                .setTimestamp(1111111111111L);
+        sampleBuilder.setValue(sampleValue)
+                .setTimestamp(timestamp);
 
         Types.Sample smpl = sampleBuilder.build();
         sampleList.add(smpl);
