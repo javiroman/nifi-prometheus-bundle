@@ -26,9 +26,9 @@ import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.util.InputStreamContentProvider;
 import org.eclipse.jetty.http.HttpMethod;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.Assert;
 import org.xerial.snappy.Snappy;
 import prometheus.Remote;
 import prometheus.Types;
@@ -39,17 +39,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class PrometheusRemoteWriteTest {
+public class PrometheusRemoteWriteBatchTest {
 
     private static final String REMOTE_WRITE_CONTEXT = "/test";
     private static final String REMOTE_WRITE_PORT = "0";
-
-    private final String SINGLE_JSON_EXPECTED =
-            "{\"metricLabels\":[" +
-                    "{\"name\":\"name1\",\"value\":\"value1\"}," +
-                    "{\"name\":\"name2\",\"value\":\"value2\"}]," +
-            "\"metricSamples\":[" +
-                    "{\"sample\":\"1.0\",\"timestamp\":\"1111111111111\"}]}";
+    private static final String MAX_BATCH_METRICS = "2";
 
     private final String BATCH_JSON_EXPECTED =
             "[{\"metricLabels\":[" +
@@ -71,6 +65,7 @@ public class PrometheusRemoteWriteTest {
         testRunner = TestRunners.newTestRunner(PrometheusRemoteWrite.class);
         testRunner.setProperty(PrometheusRemoteWrite.REMOTE_WRITE_CONTEXT, REMOTE_WRITE_CONTEXT);
         testRunner.setProperty(PrometheusRemoteWrite.REMOTE_WRITE_PORT, REMOTE_WRITE_PORT);
+        testRunner.setProperty(PrometheusRemoteWrite.MAX_BATCH_METRICS, MAX_BATCH_METRICS);
 
         TestRunnerInThread testRunnerInThread = new TestRunnerInThread(testRunner);
         spawnTestRunner = new Thread(testRunnerInThread);
@@ -89,80 +84,6 @@ public class PrometheusRemoteWriteTest {
         }
     }
 
-
-    @Test
-    public void testProcessorSingleMetric() throws Exception {
-        // avoid race condition the test is quicker than Jetty startup.
-        while (PrometheusRemoteWrite.serverEndpoint == null || !PrometheusRemoteWrite.serverEndpoint.isStarted()) {
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
-
-        List<Types.Label> labelsList = new ArrayList<>();
-        List<Types.Sample> sampleList = new ArrayList<>();
-        Types.TimeSeries.Builder timeSeriesBuilder = Types.TimeSeries.newBuilder();
-        Types.Label.Builder labelBuilder = Types.Label.newBuilder();
-        Types.Sample.Builder sampleBuilder = Types.Sample.newBuilder();
-
-        labelBuilder.setName("name1")
-                .setValue("value1");
-
-        Types.Label lbl = labelBuilder.build();
-        labelsList.add(lbl);
-
-        labelBuilder.setName("name2")
-                .setValue("value2");
-
-        lbl = labelBuilder.build();
-        labelsList.add(lbl);
-
-        sampleBuilder.setValue(1)
-                .setTimestamp(1111111111111L);
-
-        Types.Sample smpl = sampleBuilder.build();
-        sampleList.add(smpl);
-
-        timeSeriesBuilder.addAllLabels(labelsList);
-        timeSeriesBuilder.addAllSamples(sampleList);
-
-        Types.TimeSeries t = timeSeriesBuilder.build();
-        writeRequestBuilder.addAllTimeseries(Arrays.asList(t));
-
-        Remote.WriteRequest message = writeRequestBuilder.build();
-
-        byte[] compressedMessage = Snappy.compress(message.toByteArray());
-
-        HttpClient httpClient = new HttpClient();
-        httpClient.start();
-
-        ContentResponse response =
-                httpClient.newRequest(PrometheusRemoteWrite.serverEndpoint.getURI().toString())
-                        .method(HttpMethod.POST)
-                        .content(new InputStreamContentProvider(
-                                new ByteArrayInputStream(compressedMessage)))
-                        .send();
-
-        httpClient.stop();
-
-        Assert.assertEquals(response.getStatus(), HttpServletResponse.SC_OK);
-        testRunner.assertAllFlowFilesTransferred(PrometheusRemoteWrite.REL_SUCCESS);
-
-        final List<MockFlowFile> flowFileList =
-                testRunner.getFlowFilesForRelationship(PrometheusRemoteWrite.REL_SUCCESS);
-        final MockFlowFile flowFile = flowFileList.get(0);
-        final String content = flowFile.getContent();
-
-        JsonObject expectedJson = JsonParser.parseString(SINGLE_JSON_EXPECTED).getAsJsonObject();
-        JsonObject contentJson = JsonParser.parseString(content).getAsJsonObject();
-
-        Assert.assertEquals(expectedJson, contentJson);
-    }
-
     @Test
     public void testProcessorBatchMetrics() throws Exception {
         // avoid race condition the test is quicker than Jetty startup.
@@ -174,41 +95,8 @@ public class PrometheusRemoteWriteTest {
             }
         }
 
-        Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
-
-        List<Types.Label> labelsList = new ArrayList<>();
-        List<Types.Sample> sampleList = new ArrayList<>();
-        Types.TimeSeries.Builder timeSeriesBuilder = Types.TimeSeries.newBuilder();
-        Types.Label.Builder labelBuilder = Types.Label.newBuilder();
-        Types.Sample.Builder sampleBuilder = Types.Sample.newBuilder();
-
-        labelBuilder.setName("name1")
-                .setValue("value1");
-
-        Types.Label lbl = labelBuilder.build();
-        labelsList.add(lbl);
-
-        labelBuilder.setName("name2")
-                .setValue("value2");
-
-        lbl = labelBuilder.build();
-        labelsList.add(lbl);
-
-        sampleBuilder.setValue(1)
-                .setTimestamp(1111111111111L);
-
-        Types.Sample smpl = sampleBuilder.build();
-        sampleList.add(smpl);
-
-        timeSeriesBuilder.addAllLabels(labelsList);
-        timeSeriesBuilder.addAllSamples(sampleList);
-
-        Types.TimeSeries t = timeSeriesBuilder.build();
-        writeRequestBuilder.addAllTimeseries(Arrays.asList(t));
-
-        Remote.WriteRequest message = writeRequestBuilder.build();
-
-        byte[] compressedMessage = Snappy.compress(message.toByteArray());
+        PrometheusMessage pm = new PrometheusMessage();
+        byte[] compressedMessage = pm.getBatchMessage();
 
         HttpClient httpClient = new HttpClient();
         httpClient.start();
@@ -230,7 +118,7 @@ public class PrometheusRemoteWriteTest {
         final MockFlowFile flowFile = flowFileList.get(0);
         final String content = flowFile.getContent();
 
-        JsonObject expectedJson = JsonParser.parseString(SINGLE_JSON_EXPECTED).getAsJsonObject();
+        JsonObject expectedJson = JsonParser.parseString(BATCH_JSON_EXPECTED).getAsJsonObject();
         JsonObject contentJson = JsonParser.parseString(content).getAsJsonObject();
 
         Assert.assertEquals(expectedJson, contentJson);
