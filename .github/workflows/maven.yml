@@ -38,7 +38,7 @@ jobs:
     - name: Build with Maven
       run: mvn install
 
-   osx-build-jdk8:
+  osx-build-jdk8:
 
     name: MacOS - JDK 8
     runs-on: macos-latest
