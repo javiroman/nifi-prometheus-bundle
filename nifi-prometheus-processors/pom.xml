@@ -30,6 +30,7 @@
         <protobuf.version>3.13.0</protobuf.version>
         <snappy.version>1.1.7.1</snappy.version>
         <maven.protobuf.version>0.6.1</maven.protobuf.version>
+        <maven.os.version>1.6.2</maven.os.version>
     </properties>
 
     <dependencies>
@@ -92,14 +93,20 @@
     </dependencies>
 
     <build>
+        <extensions>
+          <extension>
+            <groupId>kr.motd.maven</groupId>
+            <artifactId>os-maven-plugin</artifactId>
+            <version>${maven.os.version}</version>
+          </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>${maven.protobuf.version}</version>
                 <configuration>
-                    <!-- FIXME: os detection -->
-                    <protocExecutable>/usr/bin/protoc</protocExecutable>
+                    <protocArtifact>com.google.protobuf:protoc:3.13.0:exe:${os.detected.classifier}</protocArtifact>
                     <protoSourceRoot>${basedir}/src/main/resources/proto</protoSourceRoot>
                 </configuration>
                 <executions>
