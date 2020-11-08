@@ -28,6 +28,7 @@ import org.eclipse.jetty.http.HttpMethod;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Assert;
 import org.xerial.snappy.Snappy;
 import prometheus.Remote;
 import prometheus.Types;
@@ -37,8 +38,6 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.junit.Assert;
 
 public class PrometheusRemoteWriteTest {
 
@@ -53,16 +52,16 @@ public class PrometheusRemoteWriteTest {
                     "{\"sample\":\"1.0\",\"timestamp\":\"1111111111111\"}]}";
 
     private final String BATCH_JSON_EXPECTED =
-            "[{\"metricLabels\" : [" +
-                    "{ \"name\" : \"name1\", \"value\" : \"value1\" }," +
-                    "{ \"name\" : \"name2\", \"value\" : \"value2\" }]," +
-                "\"metricSamples\" : [" +
-                    "{ \"sample\" : \"1.0\", \"timestamp\" : \"1111111111111\" }]}," +
-            "{\"metricLabels\" : [" +
-                    "{ \"name\" : \"name3\", \"value\" : \"value3\" }," +
-                    "{ \"name\" : \"name4\", \"value\" : \"value4\" }]," +
-            "\"metricSamples\" : [" +
-                    "{ \"sample\" : \"2.0\", \"timestamp\" : \"2222222222222\"}]}]";
+            "[{\"metricLabels\":[" +
+                    "{\"name\":\"name1\",\"value\":\"value1\"}," +
+                    "{\"name\":\"name2\",\"value\":\"value2\"}]," +
+              "\"metricSamples\":[" +
+                    "{\"sample\":\"1.0\",\"timestamp\":\"1111111111111\"}]}," +
+              "{\"metricLabels\":[" +
+                    "{\"name\":\"name3\",\"value\":\"value3\"}," +
+                    "{\"name\":\"name4\",\"value\":\"value4\"}]," +
+              "\"metricSamples\":[" +
+                    "{\"sample\":\"2.0\",\"timestamp\":\"2222222222222\"}]}]";
 
     private TestRunner testRunner;
     private Thread spawnTestRunner;
