@@ -48,7 +48,7 @@ public class PrometheusMessage {
         byte[] compressedMessage = Snappy.compress(message.toByteArray());
 
         return compressedMessage;
-    };
+    }
 
     public byte[] getBatchMessage(String name,
                                   String value,
@@ -85,5 +85,5 @@ public class PrometheusMessage {
         byte[] compressedMessage = Snappy.compress(message.toByteArray());
 
         return compressedMessage;
-    };
+    }
 }

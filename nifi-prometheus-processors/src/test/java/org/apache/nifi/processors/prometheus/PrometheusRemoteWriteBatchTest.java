@@ -16,8 +16,7 @@
  */
 package org.apache.nifi.processors.prometheus;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.Gson;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -29,14 +28,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.xerial.snappy.Snappy;
-import prometheus.Remote;
-import prometheus.Types;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class PrometheusRemoteWriteBatchTest {
@@ -135,8 +129,11 @@ public class PrometheusRemoteWriteBatchTest {
         final MockFlowFile flowFile = flowFileList.get(0);
         final String content = flowFile.getContent();
 
-        JsonObject expectedJson = JsonParser.parseString(BATCH_JSON_EXPECTED).getAsJsonObject();
-        JsonObject contentJson = JsonParser.parseString(content).getAsJsonObject();
+        Gson gson1 = new Gson();
+        String contentJson = gson1.toJson(content);
+
+        Gson gson2 = new Gson();
+        String expectedJson = gson2.toJson(BATCH_JSON_EXPECTED);
 
         Assert.assertEquals(expectedJson, contentJson);
     }
