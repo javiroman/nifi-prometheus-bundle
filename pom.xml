@@ -144,6 +144,26 @@
                 <includeTestSourceDirectory>true</includeTestSourceDirectory>
               </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <configuration>
+                    <consoleOutput>true</consoleOutput>
+                    <useIdeaDefaultExcludes>true</useIdeaDefaultExcludes>
+                    <excludes>
+                        <exclude>.github/workflows/maven.yml</exclude>
+                        <exclude>README.md</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
    </build>
 
