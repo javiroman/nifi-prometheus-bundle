@@ -37,7 +37,7 @@ public class PrometheusRemoteWriteBatchTest {
 
     private static final String REMOTE_WRITE_CONTEXT = "/test";
     private static final String REMOTE_WRITE_PORT = "0";
-    private static final String MAX_BATCH_METRICS = "2";
+    private static final String RECORD_BATCH_SIZE = "2";
 
     private final String BATCH_JSON_EXPECTED =
             "[{\"metricLabels\":[" +
@@ -57,7 +57,7 @@ public class PrometheusRemoteWriteBatchTest {
         testRunner = TestRunners.newTestRunner(PrometheusRemoteWrite.class);
         testRunner.setProperty(PrometheusRemoteWrite.REMOTE_WRITE_CONTEXT, REMOTE_WRITE_CONTEXT);
         testRunner.setProperty(PrometheusRemoteWrite.REMOTE_WRITE_PORT, REMOTE_WRITE_PORT);
-        testRunner.setProperty(PrometheusRemoteWrite.MAX_BATCH_METRICS, MAX_BATCH_METRICS);
+        testRunner.setProperty(PrometheusRemoteWrite.RECORD_BATCH_SIZE, RECORD_BATCH_SIZE);
 
         TestRunnerInThread testRunnerInThread = new TestRunnerInThread(testRunner);
         spawnTestRunner = new Thread(testRunnerInThread);
